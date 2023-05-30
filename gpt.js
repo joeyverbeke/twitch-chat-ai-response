@@ -16,7 +16,7 @@ const max_history = 10;
 let messages = [
     {
         role: "system",
-        content: "Respond with three words max."
+        content: "You are responding to messages from Twitch chat. Messages will come from various users, and but there username will be included, so remember which user you're talking to. Your responses will be played through text-to-speech, so only include language that will be able to be spoken properly by TTS. Keep your responses to a maximum of 20 words."
     }
 ]
 

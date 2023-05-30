@@ -18,10 +18,10 @@ const client = new tmi.Client({
 		reconnect: true
 	},
 	identity: {
-		username: 'Ruhsky-bot',
-		password: 'oauth:u625p3zwy7ler2y3sys8g4vi5f28kd'
+		username: config.twitch_username,
+		password: config.twitch_key
 	},
-	channels: [ 'ruhsky' ]
+	channels: [ config.twitch_channel ]
 });
 
 client.connect();
@@ -29,7 +29,7 @@ client.connect();
 client.on('message', (channel, tags, message, self) => {
 	console.log(`${tags['display-name']}: ${message}`);
 
-    chat(message)
+    chat(`${tags['display-name']}: ${message}`)
     .then(response => {
         if(response != null) {
             const responseData = response.choices[0].message.content;
