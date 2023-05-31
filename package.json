@@ -4,6 +4,7 @@
     "express": "^4.18.2",
     "fs.promises": "^0.1.2",
     "play-sound": "^1.1.5",
+    "socket.io": "^4.6.1",
     "tmi.js": "^1.8.5",
     "web-audio-api": "^0.2.2"
   }

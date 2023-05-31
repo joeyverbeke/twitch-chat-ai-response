@@ -2,6 +2,12 @@ const {config} = require('./app.config');
 
 const express = require("express");
 const app = express();
+const http = require('http');
+const path = require('path');
+const server = http.createServer(app);
+
+const { Server } = require('socket.io');
+const io = new Server(server);
 
 const tmi = require('tmi.js');
 const fs = require("fs");
@@ -10,6 +16,10 @@ const voice = require('elevenlabs-node');
 const {chat, local_chat} = require('./gpt');
 
 const player = require('play-sound')();
+
+server.listen(3000, () => {
+  console.log("listening on *:3000");
+})
 
 const client = new tmi.Client({
 	options: { debug: true },
@@ -33,7 +43,8 @@ client.on('message', (channel, tags, message, self) => {
     .then(response => {
         if(response != null) {
             const responseData = response.choices[0].message.content;
-            respondToChat(responseData);
+            //respondToChat(responseData);
+            io.emit("test", responseData);
         }
         else {
           res.status(500).json({ error: 'empty response' });
