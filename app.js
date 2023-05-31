@@ -43,8 +43,7 @@ client.on('message', (channel, tags, message, self) => {
     .then(response => {
         if(response != null) {
             const responseData = response.choices[0].message.content;
-            //respondToChat(responseData);
-            io.emit("test", responseData);
+            respondToChat(responseData);
         }
         else {
           res.status(500).json({ error: 'empty response' });
@@ -62,9 +61,14 @@ async function respondToChat(message){
 
     writeStream.on('finish', async () => {
 
+      io.emit("ttsReady", 1);
+
+      //for audio only playback
+      /*
         player.play("./tts.mp3", (err) => {
             if (err) console.log(`Could not play sound: ${err}`);
         });
+      */
     })
 
     writeStream.on('error', (error) => {

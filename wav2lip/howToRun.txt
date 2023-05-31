@@ -1,0 +1,11 @@
+1) git clone https://github.com/Rudrabha/Wav2Lip.git
+2) confirm python 3.6 or higher
+3) confirm ffmpeg installed
+4) pip install -r reuirements.txt
+5) put https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth into face_detection/detection/sfd and rename s3fd.pth
+6) download models and put into /checkpoints
+6.1) base: https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/Eb3LEzbfuKlJiR600lQWRxgBIY27JZg80f7V9jtMfbNDaQ?e=TBFBVW
+6.2) gan: https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EdjI7bZlgApMqsVoEUUXpLsBxqXbn5z8VTmoxp55YNDcIA?e=n9ljGW
+6.3) expert discriminator: https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EQRvmiZg-HRAjvI6zqN9eTEBP74KefynCwPWVmF57l-AYA?e=ZRPHKP
+6.4) VQ discriminator: https://iiitaphyd-my.sharepoint.com/:u:/g/personal/radrabha_m_research_iiit_ac_in/EQVqH88dTm1HjlK11eNba5gBbn15WMS0B0EZbDBttqrqkg?e=ic0ljo
+7) open audio.py and modify the funciton librosa.filters.mel in line 100 from "hp.sample_rate, hp.n_fft" to "sr=hp.sample_rate, n_fft= hp.n_fft".

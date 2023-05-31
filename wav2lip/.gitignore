@@ -1,9 +1,3 @@
-tts.mp3
-app.env.js
-node_modules/
-checkpoints/
-
-#wav2lip
 *.pkl
 *.jpg
 *.mp4
