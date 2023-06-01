@@ -16,6 +16,13 @@ const voice = require('elevenlabs-node');
 const {chat, local_chat} = require('./gpt');
 
 const player = require('play-sound')();
+//const video = require("video");
+
+app.use(express.static('public'));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 server.listen(3000, () => {
   console.log("listening on *:3000");
@@ -50,6 +57,17 @@ client.on('message', (channel, tags, message, self) => {
         }
     });
 });
+
+io.on("connection", (socket) => {
+  socket.on("vidReady", (data) => {
+    console.log("vid is ready...")
+
+    io.emit("playVid", "1");
+
+//    const video = new videoPlayer("/wav2lip/results/result_voice.mp4");
+//    video.play();
+  })
+})
 
 async function respondToChat(message){
     const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
