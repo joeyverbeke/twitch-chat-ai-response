@@ -7,7 +7,8 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <video id="videoPlayer" width="442" height="342" controls>
+    <video id="videoPlayer" width="442" height="342">
+    <source src="/aiJoey.mp4?version=1630749314" type="video/mp4">
         Your browser does not support the video tag.
     </video>
     <script>
@@ -16,7 +17,8 @@
             const socket = io.connect();
             
             socket.on('playVid', function(data) {
-                videoPlayer.src = "/aiJoey.mp4";
+                let source = videoPlayer.currentSrc.split('?')[0];  // Get rid of old timestamp
+                videoPlayer.src = `${source}?version=${new Date().getTime()}`;  // Append new timestamp
                 videoPlayer.play();
             });
         });

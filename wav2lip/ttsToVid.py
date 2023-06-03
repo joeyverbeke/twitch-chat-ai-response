@@ -33,6 +33,8 @@ def ttsReady(data):
         output, error = proc_create.communicate()
         print(output)
 
+    print("finished creating...")
+
     #proc_move = subprocess.Popen(["cmd", "/c", "move", "./results/result_voice.mp4", "../public/aiJoey.mp4"])
     proc_move = subprocess.Popen('move .\\results\\result_voice.mp4 ..\\public\\aiJoey.mp4', shell=True)
 
@@ -41,7 +43,7 @@ def ttsReady(data):
         output, error = proc_move.communicate()
         print(output)
 
-    print("finished...")
+    print("finished moving...")
     sio.emit("vidReady", {"vidReady": "vidReady"})
 
 @sio.event
