@@ -18,9 +18,14 @@ const {chat, local_chat} = require('./gpt');
 const player = require('play-sound')();
 //const video = require("video");
 
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ server });
+
 let isCreatingVid = false;
 let chatMessages = [];
 let lastFileSize = 0;
+
+const twinPrompt = "twin";
 
 app.use(express.static('public'));
 
@@ -31,6 +36,21 @@ app.get('/', (req, res) => {
 server.listen(3000, () => {
   console.log("listening on *:3000");
 })
+
+wss.on('connection', ws => {
+  console.log('Client connected');
+
+  // Send a message to the client
+  ws.send('Welcome!');
+
+  ws.on('message', message => {
+    console.log('Received: %s', message);
+  });
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
+});
 
 const client = new tmi.Client({
 	options: { debug: true },
@@ -49,6 +69,11 @@ client.connect();
 
 client.on('message', (channel, tags, message, self) => {
 	//console.log(`${tags['display-name']}: ${message}`);
+
+  //return if message isn't for my twin
+  if(!message.includes(twinPrompt)){
+    return;
+  }
 
   chatMessages.push((`${tags['display-name']}: ${message}`));
 
@@ -87,7 +112,8 @@ io.on("connection", (socket) => {
   socket.on("vidReady", (data) => {
     console.log("vid is ready...")
 
-    //check if new file has loaded
+    //TODO: probably not needed & definitely not the right way
+    //check if new file has loaded 
     while(fs.statSync("./public/aiJoey.mp4").size == lastFileSize){
       //wait
     }
@@ -110,6 +136,13 @@ io.on("connection", (socket) => {
 })
 
 
+function notifyUnity() {
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({audioReady: true}));
+    }
+  });
+}
 
 async function responseToTTS(message){
     const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
@@ -120,6 +153,12 @@ async function responseToTTS(message){
     audioStream.pipe(writeStream);
 
     writeStream.on('finish', async () => {
+
+      //move file for unity to use
+      //fs.renameSync("tts.mp3", "../Twitch_Avatar/Assets/TTS_Files/tts.mp3");
+      //console.log("TTS created and moved...");
+
+      //notifyUnity();
 
       //tell python we ready for some wav2lip
       io.emit("ttsReady", 1);

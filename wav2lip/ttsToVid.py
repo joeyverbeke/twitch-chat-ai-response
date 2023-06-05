@@ -35,7 +35,6 @@ def ttsReady(data):
 
     print("finished creating...")
 
-    #proc_move = subprocess.Popen(["cmd", "/c", "move", "./results/result_voice.mp4", "../public/aiJoey.mp4"])
     proc_move = subprocess.Popen('move .\\results\\result_voice.mp4 ..\\public\\aiJoey.mp4', shell=True)
 
 
