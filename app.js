@@ -1,13 +1,8 @@
 const {config} = require('./app.config');
 
 const express = require("express");
-const app = express();
-const http = require('http');
-const path = require('path');
-const server = http.createServer(app);
-
-const { Server } = require('socket.io');
-const io = new Server(server);
+const { createServer } = require('http');
+const WebSocket = require('ws');
 
 const tmi = require('tmi.js');
 const fs = require("fs");
@@ -18,7 +13,12 @@ const {chat, local_chat} = require('./gpt');
 const player = require('play-sound')();
 //const video = require("video");
 
-const WebSocket = require('ws');
+var ffmpeg = require('fluent-ffmpeg');
+
+const app = express();
+const port = 8080;
+
+const server = createServer(app);
 const wss = new WebSocket.Server({ server });
 
 let isCreatingVid = false;
@@ -27,15 +27,10 @@ let lastFileSize = 0;
 
 const twinPrompt = "twin";
 
-app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+server.listen(port, function() {
+  console.log(`Listening on http://localhost:${port}`);
 });
-
-server.listen(3000, () => {
-  console.log("listening on *:3000");
-})
 
 wss.on('connection', ws => {
   console.log('Client connected');
@@ -108,38 +103,11 @@ async function chatToGPT(){
   }
 }
 
-io.on("connection", (socket) => {
-  socket.on("vidReady", (data) => {
-    console.log("vid is ready...")
 
-    //TODO: probably not needed & definitely not the right way
-    //check if new file has loaded 
-    while(fs.statSync("./public/aiJoey.mp4").size == lastFileSize){
-      //wait
-    }
-
-    console.log("vid has loaded...")
-
-    lastFileSize = fs.statSync("./public/aiJoey.mp4").size;
-
-    io.emit("playVid", "1");
-    isCreatingVid = false;
-
-    //if chat messages are waiting, start new one
-    if(chatMessages.length > 0){
-      chatToGPT();
-    }
-
-//    const video = new videoPlayer("/wav2lip/results/result_voice.mp4");
-//    video.play();
-  })
-})
-
-
-function notifyUnity() {
+function notifyUnity(ttsFileName) {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({audioReady: true}));
+      client.send(JSON.stringify({fileName: ttsFileName}));
     }
   });
 }
@@ -147,29 +115,40 @@ function notifyUnity() {
 async function responseToTTS(message){
     const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
 
-    const ttsFileName = "tts.mp3"
+    //const ttsFileName = "tts.mp3"
+    let timestamp = Date.now();
+    const ttsFileName = `tts_${timestamp}`;
+    const ttsPath = "./airia/TTS_Files/";
 
-    const writeStream = fs.createWriteStream(ttsFileName);
+    const ttsMP3 = ttsPath + ttsFileName + ".mp3";
+    const ttsWAV = ttsPath + ttsFileName + ".wav";
+
+    const writeStream = fs.createWriteStream(ttsMP3);
     audioStream.pipe(writeStream);
 
     writeStream.on('finish', async () => {
 
-      //move file for unity to use
-      fs.renameSync("tts.mp3", "../Twitch_Avatar/Assets/TTS_Files/tts.mp3");
-      console.log("TTS created and moved...");
+      var process = new ffmpeg({ source: ttsMP3 })
+        .toFormat('wav')
+        .on('error', function(err) {
+          console.log('An error occurred: ' + err.message);
+        })
+        .on('progress', function(progress) {
+          console.log('Processing: ' + progress.percent + '% done');
+        })
+        .on('end', function() {
+          console.log('Processing finished!');
+        })
+        .saveToFile(ttsWAV);
+      
+      setTimeout(() => {
+        notifyUnity(ttsFileName);
+      }, "100");
 
-      notifyUnity();
-
-      //tell python we ready for some wav2lip
-      io.emit("ttsReady", 1);
-      isCreatingVid = true;
-
-      //for audio only playback
-      /*
-        player.play("./tts.mp3", (err) => {
-            if (err) console.log(`Could not play sound: ${err}`);
-        });
-      */
+      //if chat messages are waiting, start new one
+      if(chatMessages.length > 0){
+        chatToGPT();
+      }
     })
 
     writeStream.on('error', (error) => {

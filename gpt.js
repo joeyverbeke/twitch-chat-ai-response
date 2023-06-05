@@ -16,19 +16,16 @@ const max_history = 10;
 let messages = [
     {
         role: "system",
-        content: "You are responding to messages from Twitch chat. Messages will come from various users, and and their username will be included. Remember which user you're talking to, but DON'T include their name in your response EVERY time. Your responses will be played through text-to-speech, so only use language that will be able to be spoken naturally by TTS. Keep your responses to a maximum of 20 words."
-        //content: "You are responding to messages from Twitch chat. Respond with three words max"
+        content: "You are responding to messages from Ruhsky's Twitch chat. Messages will come from various users, and and their username will be included. Remember which user you're talking to, but DON'T include their name in your response EVERY time. Your responses will be played through text-to-speech, so only use language that will be able to be spoken naturally by TTS. Keep your responses to a maximum of 20 words."
+        //content: "You are helping me debug my app. Respond with one different word each time. ONLY ONE WORD!"
     }
 ]
 
 const chat = async(prompt, temperature = 0.5, max_tokens = 2048) => {
 
-    //console.log("user: ", prompt);
     
     const userMessage = { role: "user", content: prompt };
     messages.push(userMessage);
-    
-    //console.log('chatGPT/chat:', prompt); // debug
 
     request.url = 'https://api.openai.com/v1/chat/completions';
     request.method = 'POST';
