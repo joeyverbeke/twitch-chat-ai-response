@@ -155,10 +155,10 @@ async function responseToTTS(message){
     writeStream.on('finish', async () => {
 
       //move file for unity to use
-      //fs.renameSync("tts.mp3", "../Twitch_Avatar/Assets/TTS_Files/tts.mp3");
-      //console.log("TTS created and moved...");
+      fs.renameSync("tts.mp3", "../Twitch_Avatar/Assets/TTS_Files/tts.mp3");
+      console.log("TTS created and moved...");
 
-      //notifyUnity();
+      notifyUnity();
 
       //tell python we ready for some wav2lip
       io.emit("ttsReady", 1);
