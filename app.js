@@ -24,8 +24,9 @@ const wss = new WebSocket.Server({ server });
 let isCreatingVid = false;
 let chatMessages = [];
 let lastFileSize = 0;
+let currentBot;
 
-const twinPrompt = "twin";
+const aiPrompt = ["airia", "ailuro"];
 
 
 server.listen(port, function() {
@@ -65,8 +66,15 @@ client.connect();
 client.on('message', (channel, tags, message, self) => {
 	//console.log(`${tags['display-name']}: ${message}`);
 
-  //return if message isn't for my twin
-  if(!message.includes(twinPrompt)){
+  //return if message is for me
+  let includesPrompt = false;
+  for(let i=0; i<aiPrompt.length; i++){
+    if(message.includes(aiPrompt[i])){
+      includesPrompt = true;
+    }
+  }
+
+  if(!includesPrompt){
     return;
   }
 
@@ -84,6 +92,13 @@ async function chatToGPT(){
     //pick random message from chat
     const chosenChatter = chatMessages[Math.floor(Math.random() * chatMessages.length)];
 
+    //set currentBot to whom chatter is talking to
+    for(let i=0; i<aiPrompt.length; i++){
+      if(chosenChatter.includes(aiPrompt[i])){
+        currentBot = aiPrompt[i];
+      }
+    }
+
     //responding to
     console.log(chosenChatter);
 
@@ -93,9 +108,9 @@ async function chatToGPT(){
     chat(chosenChatter)
     .then(response => {
         if(response != null) {
-            const responseData = response.choices[0].message.content;
-            responseToTTS(responseData);
-      }
+          const responseData = response.choices[0].message.content;
+          responseToTTS(responseData, currentBot);
+        }
         else {
           res.status(500).json({ error: 'empty response' });
         }
@@ -104,16 +119,31 @@ async function chatToGPT(){
 }
 
 
-function notifyUnity(ttsFileName) {
+function notifyUnity(_botName, ttsFileName) {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({fileName: ttsFileName}));
+      client.send(JSON.stringify({botName: _botName, fileName: ttsFileName}));
     }
   });
 }
 
-async function responseToTTS(message){
-    const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
+async function responseToTTS(message, botName){
+    let audioStream;
+
+    switch (botName) {
+      case "airia":
+        audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_airia, message);
+        break;
+    
+      case "ailuro":
+        audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_ailuro, message);
+        break;
+
+      default:
+        break;
+    }
+
+    //const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
 
     //const ttsFileName = "tts.mp3"
     let timestamp = Date.now();
@@ -142,8 +172,8 @@ async function responseToTTS(message){
         .saveToFile(ttsWAV);
       
       setTimeout(() => {
-        notifyUnity(ttsFileName);
-      }, "100");
+        notifyUnity(currentBot, ttsFileName);
+      }, "500");
 
       //if chat messages are waiting, start new one
       if(chatMessages.length > 0){
