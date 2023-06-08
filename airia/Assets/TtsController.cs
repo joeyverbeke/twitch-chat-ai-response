@@ -24,6 +24,9 @@ public class TtsController : MonoBehaviour
 
     WebSocket websocket;
 
+    private bool isTalking = false;
+    private List<TtsPath> ttsPaths = new List<TtsPath>();
+
     async void Start()
     {
         //audioSource = gameObject.AddComponent<AudioSource>();
@@ -54,10 +57,14 @@ public class TtsController : MonoBehaviour
             Debug.Log(msgAsJSON.ToString());
 
             string audioFilePath = "TTS_Files/" + msgAsJSON.fileName + ".wav";
-
             Debug.Log("botName recieved: " + msgAsJSON.botName);
-            StartCoroutine(LoadAudioClip(msgAsJSON.botName, audioFilePath));
- 
+
+            //add path to array
+            TtsPath temp = new TtsPath {  fileName = audioFilePath, botName = msgAsJSON.botName };
+            ttsPaths.Add(temp);
+
+            //play tts
+            playNextTts();
 
         };
 
@@ -65,8 +72,19 @@ public class TtsController : MonoBehaviour
         await websocket.Connect();
     }
 
-    private IEnumerator LoadAudioClip(string botName, string relativePath)
+    private void playNextTts()
     {
+        if (!isTalking && ttsPaths.Count > 0)
+        {
+            StartCoroutine(LoadAndPlayTTS(ttsPaths[0].botName, ttsPaths[0].fileName));
+            ttsPaths.RemoveAt(0);
+        }
+    }
+
+    private IEnumerator LoadAndPlayTTS(string botName, string relativePath)
+    {
+        isTalking = true;
+
         string filePath = Path.Combine(Application.dataPath, "..", relativePath);
         filePath = "file:///" + filePath.Replace("\\", "/");
 
@@ -90,7 +108,7 @@ public class TtsController : MonoBehaviour
 
                 Airia.GetComponent<Animator>().SetBool("isTalking", true);
                 Airia.GetComponent<Animator>().SetTrigger("startedTalking");
-                StartCoroutine(TransitionStateAfterTalking(botName, tts));
+                StartCoroutine(AfterFinishedTalking(botName, tts));
             }
             else if(botName == "ailuro")
             {
@@ -103,7 +121,7 @@ public class TtsController : MonoBehaviour
 
                 Ailuro.GetComponent<Animator>().SetBool("isTalking", true);
                 Ailuro.GetComponent<Animator>().SetTrigger("startedTalking");
-                StartCoroutine(TransitionStateAfterTalking(botName, tts));
+                StartCoroutine(AfterFinishedTalking(botName, tts));
             }
         }
         else
@@ -112,10 +130,11 @@ public class TtsController : MonoBehaviour
         }
     }
 
-    private IEnumerator TransitionStateAfterTalking(string botName, AudioSource tts)
+    private IEnumerator AfterFinishedTalking(string botName, AudioSource tts)
     {
         yield return new WaitUntil(() => tts.isPlaying == false);
-        
+
+        //transition animation
         if(botName == "airia")
         {
             Airia.GetComponent<Animator>().SetBool("isTalking", false);
@@ -126,7 +145,10 @@ public class TtsController : MonoBehaviour
             Ailuro.GetComponent<Animator>().SetBool("isTalking", false);
             Ailuro.GetComponent<Animator>().SetTrigger("stoppedTalking");
         }
-        
+
+        isTalking = false;
+        playNextTts();
+
     }
 
     // Update is called once per frame

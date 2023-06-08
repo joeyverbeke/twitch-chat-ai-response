@@ -21,7 +21,7 @@ const port = 8080;
 const server = createServer(app);
 const wss = new WebSocket.Server({ server });
 
-let isCreatingVid = false;
+let waitingForTts = false;
 let chatMessages = [];
 let lastFileSize = 0;
 let currentBot;
@@ -80,14 +80,14 @@ client.on('message', (channel, tags, message, self) => {
 
   chatMessages.push((`${tags['display-name']}: ${message}`));
 
-  if(!isCreatingVid){
+  if(!waitingForTts){
     chatToGPT();
   }
 
 });
 
 async function chatToGPT(){
-  if(!isCreatingVid){
+  if(!waitingForTts && chatMessages.length > 0){
     
     //pick random message from chat
     const chosenChatter = chatMessages[Math.floor(Math.random() * chatMessages.length)];
@@ -108,8 +108,15 @@ async function chatToGPT(){
     chat(chosenChatter)
     .then(response => {
         if(response != null) {
+
           const responseData = response.choices[0].message.content;
-          responseToTTS(responseData, currentBot);
+          console.log(Date.now(), " - ", chosenChatter, currentBot, ": ", responseData);
+
+          getTtsOfResponse(responseData, currentBot)
+          .then(ttsFile => {
+            writeToFileAndSend(ttsFile);
+
+          });
         }
         else {
           res.status(500).json({ error: 'empty response' });
@@ -127,64 +134,59 @@ function notifyUnity(_botName, ttsFileName) {
   });
 }
 
-async function responseToTTS(message, botName){
-    let audioStream;
+async function getTtsOfResponse(message, botName){
 
-    switch (botName) {
-      case "airia":
-        audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_airia, message);
-        break;
+  waitingForTts = true;
+
+  switch (botName) {
+    case "airia":
+      return await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_airia, message);
+
+    case "ailuro":
+      return await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_ailuro, message);
+
+    default:
+      break;
+  }
+}
+
+async function writeToFileAndSend(ttsStream){
+  let timestamp = Date.now();
+  const ttsFileName = `tts_${timestamp}`;
+  const ttsPath = "./airia/TTS_Files/";
+
+  const ttsMP3 = ttsPath + ttsFileName + ".mp3";
+  const ttsWAV = ttsPath + ttsFileName + ".wav";
+
+  const writeStream = fs.createWriteStream(ttsMP3);
+  ttsStream.pipe(writeStream);
+
+  writeStream.on('finish', async () => {
+
+    var process = new ffmpeg({ source: ttsMP3 })
+      .toFormat('wav')
+      .on('error', function(err) {
+        console.log('An error occurred: ' + err.message);
+      })
+      .on('progress', function(progress) {
+        console.log('Processing: ' + progress.percent + '% done');
+      })
+      .on('end', function() {
+        console.log('Processing finished!');
+      })
+      .saveToFile(ttsWAV);
     
-      case "ailuro":
-        audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id_ailuro, message);
-        break;
+    const timeout = setTimeout(() => {
+      notifyUnity(currentBot, ttsFileName);
+      waitingForTts = false;
+      chatToGPT();
+    }, "500")
+  })
 
-      default:
-        break;
-    }
-
-    //const audioStream = await voice.textToSpeechStream(config.elevenlabs_key, config.voice_id, message);
-
-    //const ttsFileName = "tts.mp3"
-    let timestamp = Date.now();
-    const ttsFileName = `tts_${timestamp}`;
-    const ttsPath = "./airia/TTS_Files/";
-
-    const ttsMP3 = ttsPath + ttsFileName + ".mp3";
-    const ttsWAV = ttsPath + ttsFileName + ".wav";
-
-    const writeStream = fs.createWriteStream(ttsMP3);
-    audioStream.pipe(writeStream);
-
-    writeStream.on('finish', async () => {
-
-      var process = new ffmpeg({ source: ttsMP3 })
-        .toFormat('wav')
-        .on('error', function(err) {
-          console.log('An error occurred: ' + err.message);
-        })
-        .on('progress', function(progress) {
-          console.log('Processing: ' + progress.percent + '% done');
-        })
-        .on('end', function() {
-          console.log('Processing finished!');
-        })
-        .saveToFile(ttsWAV);
-      
-      setTimeout(() => {
-        notifyUnity(currentBot, ttsFileName);
-      }, "500");
-
-      //if chat messages are waiting, start new one
-      if(chatMessages.length > 0){
-        chatToGPT();
-      }
-    })
-
-    writeStream.on('error', (error) => {
-        console.error('Error writing the file:', error);
-        res.status(500).send('Internal Server Error');
-    });
+  writeStream.on('error', (error) => {
+      console.error('Error writing the file:', error);
+      res.status(500).send('Internal Server Error');
+  });
 }
 
 app.post("/gpt", async (req, res) => {
