@@ -8,7 +8,7 @@ const tmi = require('tmi.js');
 const fs = require("fs");
 
 const voice = require('elevenlabs-node');
-const {chat, local_chat} = require('./gpt');
+const {chat, chat_role, local_chat, determineBot} = require('./gpt');
 
 const player = require('play-sound')();
 //const video = require("video");
@@ -26,8 +26,9 @@ let chatMessages = [];
 let lastFileSize = 0;
 let currentBot;
 
-const aiPrompt = ["airia", "ailuro"];
+const botNames = ["airia", "ailuro"];
 
+let TTS_ON = false;
 
 server.listen(port, function() {
   console.log(`Listening on http://localhost:${port}`);
@@ -61,15 +62,17 @@ const client = new tmi.Client({
 	channels: [ config.twitch_channel ]
 });
 
-client.connect();
+client.connect( () => {
+
+});
 
 client.on('message', (channel, tags, message, self) => {
 	//console.log(`${tags['display-name']}: ${message}`);
 
   //return if message is for me
   let includesPrompt = false;
-  for(let i=0; i<aiPrompt.length; i++){
-    if(message.includes(aiPrompt[i])){
+  for(let i=0; i<botNames.length; i++){
+    if(message.includes(botNames[i])){
       includesPrompt = true;
     }
   }
@@ -86,42 +89,65 @@ client.on('message', (channel, tags, message, self) => {
 
 });
 
+function formatBotName(_currentBot){
+  for(let i=0; i<botNames.length; i++){
+    if(_currentBot.includes(botNames[i])){
+      return botNames[i];
+    }
+  }
+
+  return botNames[0];
+}
+
 async function chatToGPT(){
   if(!waitingForTts && chatMessages.length > 0){
     
     //pick random message from chat
     const chosenChatter = chatMessages[Math.floor(Math.random() * chatMessages.length)];
 
+    /*
     //set currentBot to whom chatter is talking to
-    for(let i=0; i<aiPrompt.length; i++){
-      if(chosenChatter.includes(aiPrompt[i])){
-        currentBot = aiPrompt[i];
+    for(let i=0; i<botNames.length; i++){
+      if(chosenChatter.includes(botNames[i])){
+        currentBot = botNames[i];
       }
     }
-
+    */
+    
     //responding to
     console.log(chosenChatter);
 
     //clear messages
     chatMessages = [];
 
-    chat(chosenChatter)
-    .then(response => {
-        if(response != null) {
+    //determine which bot chatter is talking to
+    determineBot(chosenChatter, botNames)
+    .then(_currentBot => {
 
-          const responseData = response.choices[0].message.content;
-          console.log(Date.now(), " - ", chosenChatter, currentBot, ": ", responseData);
+      currentBot = formatBotName(_currentBot);
 
-          getTtsOfResponse(responseData, currentBot)
-          .then(ttsFile => {
-            writeToFileAndSend(ttsFile);
+      console.log("currentBot: ", currentBot);
 
-          });
-        }
-        else {
-          res.status(500).json({ error: 'empty response' });
-        }
-    });
+      chat_role(chosenChatter, currentBot)
+      .then(response => {
+          if(response != null) {
+
+            const responseData = response.choices[0].message.content;
+            //console.log(Date.now(), " - ", chosenChatter, currentBot, ": ", responseData);
+
+            if(TTS_ON){
+              getTtsOfResponse(responseData, currentBot)
+              .then(ttsFile => {
+                writeToFileAndSend(ttsFile);
+              });
+            }
+
+          }
+          else {
+            res.status(500).json({ error: 'empty response' });
+          }
+      });
+    })
   }
 }
 
@@ -130,10 +156,14 @@ function notifyUnity(_botName, ttsFileName) {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({botName: _botName, fileName: ttsFileName}));
+
+      //process new message (if avialable) after sending to unity
+      chatToGPT();
     }
   });
 }
 
+//TODO: pasrse response and remove special characters / emojis
 async function getTtsOfResponse(message, botName){
 
   waitingForTts = true;
@@ -179,7 +209,6 @@ async function writeToFileAndSend(ttsStream){
     const timeout = setTimeout(() => {
       notifyUnity(currentBot, ttsFileName);
       waitingForTts = false;
-      chatToGPT();
     }, "500")
   })
 
