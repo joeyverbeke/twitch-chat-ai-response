@@ -39,7 +39,8 @@ const systemRoles = [
      (3) DO NOT INCLUDE THE NAME OF YOUR PERSONA IN YOUR RESPONSE!!! 
      (4) NO EMOJIS! 
      (5) Try to keep your reponses to a maximum of 20 words. 
-     (6) IMPORTANT: Your role will sometimes be switched to Airia, a cute bubbly girl, in the style of a Vtuber, so remember who she is.`,]
+     (6) IMPORTANT: Your role will sometimes be switched to Airia, a cute bubbly girl, in the style of a Vtuber, so remember who she is.`
+]
 
 let messages = [
     {
@@ -93,7 +94,7 @@ const determineBot = async(prompt, botNames, temperature = 0.5, max_tokens = 204
 
     const json = await response.json();
 
-    console.log("gpt thought bot was: ", json?.choices?.[0]?.message?.content);
+    //console.log("gpt thought bot was: ", json?.choices?.[0]?.message?.content);
 
     return json?.choices?.[0]?.message?.content;
 }
@@ -126,7 +127,7 @@ const chat = async(prompt, temperature = 0.5, max_tokens = 2048) => {
 
     messages.push(gptMessage);
 
-    console.log(messages);
+    //console.log(messages);
 
     //console.log("ai: ", gptAnswer);
 
@@ -175,7 +176,7 @@ const chat_role = async(prompt, role = "default", temperature = 0.5, max_tokens 
 
     messages.push(gptMessage);
 
-    console.log(messages);
+    //console.log(messages);
 
     //console.log("ai: ", gptAnswer);
 

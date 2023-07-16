@@ -83,6 +83,8 @@ public class TtsController : MonoBehaviour
 
     private IEnumerator LoadAndPlayTTS(string botName, string relativePath)
     {
+        yield return new WaitForSeconds(0.1f);
+
         isTalking = true;
 
         string filePath = Path.Combine(Application.dataPath, "..", relativePath);

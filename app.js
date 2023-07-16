@@ -28,7 +28,7 @@ let currentBot;
 
 const botNames = ["airia", "ailuro"];
 
-let TTS_ON = false;
+let TTS_ON = true;
 
 server.listen(port, function() {
   console.log(`Listening on http://localhost:${port}`);
@@ -126,14 +126,14 @@ async function chatToGPT(){
 
       currentBot = formatBotName(_currentBot);
 
-      console.log("currentBot: ", currentBot);
+      //console.log("currentBot: ", currentBot);
 
       chat_role(chosenChatter, currentBot)
       .then(response => {
           if(response != null) {
 
             const responseData = response.choices[0].message.content;
-            //console.log(Date.now(), " - ", chosenChatter, currentBot, ": ", responseData);
+            console.log(Date.now(), " - ", chosenChatter, " -> ", currentBot, ": ", responseData);
 
             if(TTS_ON){
               getTtsOfResponse(responseData, currentBot)
